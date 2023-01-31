@@ -1,8 +1,8 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
-import { db } from "./database/knex";
 import { Videos } from "./models/Videos";
 import { TVideos } from "./types";
+import { VideoBAse } from "./database/VideoBase";
 
 const app = express();
 
@@ -33,21 +33,25 @@ app.get("/ping", async (req: Request, res: Response) => {
 
 app.get("/videos", async (req: Request, res: Response) => {
   try {
-    const query = req.query.q;
+    const query = req.query.q as string | undefined;
 
-    let response;
+    /// ATIVIDADE DIA 1
+    // let response;
 
-    if (query) {
-      const getVideosByQuery: TVideos[] = await db("videos").where(
-        "name",
-        "LIKE",
-        `%${query}%`
-      );
-      response = getVideosByQuery;
-    } else {
-      const getAllVideos: TVideos[] = await db("videos");
-      response = getAllVideos;
-    }
+    // if (query) {
+    //   const getVideosByQuery: TVideos[] = await db("videos").where(
+    //     "name",
+    //     "LIKE",
+    //     `%${query}%`
+    //   );
+    //   response = getVideosByQuery;
+    // } else {
+    //   const getAllVideos: TVideos[] = await db("videos");
+    //   response = getAllVideos;
+    // }
+    const videoDatabase = new VideoBAse();
+    const response = await videoDatabase.findVideoByGet(query);
+
     const videos: Videos[] = response.map(
       (video) =>
         new Videos(video.id, video.titulo, video.duracao, video.data_update)
@@ -84,7 +88,9 @@ app.post("/videos", async (req: Request, res: Response) => {
       throw new Error("'duração' deve ser um número");
     }
 
-    const [checkVideo] = await db("videos").where({ id: id });
+    // const [checkVideo] = await db("videos").where({ id: id });
+    const videosDatabase = new VideoBAse();
+    const checkVideo = await videosDatabase.checkVideoById(id);
 
     if (checkVideo) {
       res.status(400);
@@ -100,7 +106,9 @@ app.post("/videos", async (req: Request, res: Response) => {
       data_update: newVideo.getDataUpdate(),
     };
 
-    await db("videos").insert(newVideoForDB);
+    // await db("videos").insert(newVideoForDB);
+    await videosDatabase.insertNewVideo(newVideoForDB);
+
     res.status(200).send({ message: "Video Upado", video: newVideoForDB });
   } catch (error: any) {
     console.log(error.message);
@@ -118,7 +126,9 @@ app.put("/videos/:id", async (req: Request, res: Response) => {
     const { id } = req.params;
     const { newId, newTitulo, newDuracao, newDataUpdate } = req.body;
 
-    const [getVideoById] = await db("videos").where({ id });
+    // const [getVideoById] = await db("videos").where({ id });
+    const videosDatabase = new VideoBAse();
+    const getVideoById = await videosDatabase.checkVideoById(id);
 
     if (!getVideoById) {
       res.status(400);
@@ -155,7 +165,8 @@ app.put("/videos/:id", async (req: Request, res: Response) => {
         data_update: video.getDataUpdate() || getVideoById.data_update,
       };
 
-      await db("videos").update(updateVideo).where({ id: id });
+      // await db("videos").update(updateVideo).where({ id: id });
+      await videosDatabase.updateVideo(updateVideo, id);
       res
         .status(200)
         .send({ message: "Videos atualizado", video: updateVideo });
@@ -174,13 +185,16 @@ app.put("/videos/:id", async (req: Request, res: Response) => {
 app.delete("/videos/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const [getVideoById] = await db("videos").where({ id });
+    // const [getVideoById] = await db("videos").where({ id });
+    const videosDatabase = new VideoBAse();
+    const getVideoById = await videosDatabase.checkVideoById(id);
 
     if (!getVideoById) {
       res.status(400).send("Video não encontrado");
     }
     if (getVideoById) {
-      await db("videos").del().where({ id: id });
+      // await db("videos").del().where({ id: id });
+      await videosDatabase.deleteVideo(id)
       res.status(200).send({ message: "Videos excluído" });
     }
   } catch (error: any) {
